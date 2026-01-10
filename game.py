@@ -4,6 +4,7 @@ import curses
 import os
 from maze import Maze
 from entities import PacMan, Blinky, Pinky, Inky, Clyde
+import sounds
 from constants import (
     FPS, GHOST_VULNERABLE_TIME, STARTING_LIVES, HIGH_SCORE_FILE,
     SCORE_DOT, SCORE_POWER_PELLET, SCORE_GHOST_BASE,
@@ -143,10 +144,16 @@ class Game:
         if key == ord('q') or key == ord('Q'):
             return False
 
+        # Toggle sound with M key
+        if key == ord('m') or key == ord('M'):
+            sounds.sound_enabled = not sounds.sound_enabled
+            return True
+
         # State-specific input handling
         if self.state == STATE_START:
             if key == ord('\n') or key == ord(' '):
                 self.state = STATE_PLAYING
+                sounds.play_start()
             return True
 
         if self.state == STATE_GAME_OVER:
@@ -205,13 +212,13 @@ class Game:
         px, py = self.pacman.get_position()
         if self.maze.eat_dot(px, py):
             self.score += SCORE_DOT
-            self.play_sound()
+            sounds.play_waka()
         elif self.maze.eat_power_pellet(px, py):
             self.score += SCORE_POWER_PELLET
             self.ghost_eat_multiplier = 1
             for ghost in self.ghosts:
                 ghost.make_vulnerable(GHOST_VULNERABLE_TIME)
-            self.play_sound()
+            sounds.play_power_pellet()
 
         # Update ghosts
         for ghost in self.ghosts:
@@ -223,6 +230,7 @@ class Game:
         # Check level complete
         if self.maze.remaining_dots() == 0:
             self.state = STATE_LEVEL_COMPLETE
+            sounds.play_level_complete()
 
         # Update high score
         if self.score > self.high_score:
@@ -242,13 +250,13 @@ class Game:
                     ghost.eat()
                     self.score += SCORE_GHOST_BASE * self.ghost_eat_multiplier
                     self.ghost_eat_multiplier *= 2
-                    self.play_sound()
+                    sounds.play_eat_ghost()
                 elif ghost.state != GHOST_EATEN:
                     # Pac-Man dies
                     self.pacman.is_dead = True
                     self.state = STATE_DYING
                     self.death_animation_frame = 0
-                    self.play_sound()
+                    sounds.play_death()
                     return
 
     def next_level(self):
@@ -268,11 +276,6 @@ class Game:
         self.maze.reset()
         self.reset_positions()
         self.state = STATE_PLAYING
-
-    def play_sound(self):
-        """Play terminal bell sound (optional)."""
-        # curses.beep()  # Uncomment to enable sound
-        pass
 
     def render(self):
         """Render the game screen."""
@@ -304,8 +307,7 @@ class Game:
             "Eat all dots to complete the level",
             "Avoid ghosts or eat them after power pellets",
             "",
-            "SPACE/P - Pause",
-            "Q - Quit",
+            "SPACE/P - Pause  |  M - Toggle Sound  |  Q - Quit",
             "",
             f"High Score: {self.high_score}",
             "",
@@ -456,3 +458,4 @@ class Game:
             self.render()
 
         self.save_high_score()
+        sounds.cleanup()
