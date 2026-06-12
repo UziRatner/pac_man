@@ -1,0 +1,30 @@
+/* Fullscreen black canvas; disable scrolling, zoom and selection so the game
+   feels like a native app on iOS. Safe-area insets keep clear of the Dynamic
+   Island and the home indicator. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing: border-box;
+}
+
+#game {
+  display: block;
+  touch-action: none; /* kill scroll / pinch-zoom / double-tap-zoom */
+}
