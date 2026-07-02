@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0f172a" />
+<title>מחשבון רופי ↔ שקל</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💱</text></svg>" />
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-soft: #1e293b;
+    --card: #1e293b;
+    --card-2: #273449;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-2: #22d3ee;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --border: #334155;
+    --shadow: 0 20px 50px rgba(0,0,0,.45);
+    --radius: 20px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #eef2f7;
+      --bg-soft: #ffffff;
+      --card: #ffffff;
+      --card-2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 20px 50px rgba(15,23,42,.12);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.18), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(34,211,238,.14), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(12px, 3vw, 32px);
+  }
+  .app {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 2px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .logo {
+    width: 42px; height: 42px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 20px rgba(56,189,248,.35);
+  }
+  .brand h1 { font-size: 17px; font-weight: 700; line-height: 1.15; }
+  .brand p { font-size: 12px; color: var(--muted); }
+
+  .rate-pill {
+    display: flex; flex-direction: column; align-items: flex-end;
+    font-size: 11px; color: var(--muted); gap: 2px; text-align: left;
+  }
+  .rate-pill strong { font-size: 13px; color: var(--text); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-inline-start:5px; vertical-align:middle; }
+  .dot.live { background: var(--good); box-shadow: 0 0 0 3px rgba(74,222,128,.2); }
+  .dot.cache { background: var(--warn); }
+  .dot.err { background: var(--bad); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+
+  .field { position: relative; }
+  .field-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: var(--muted); margin-bottom: 8px; padding: 0 4px;
+  }
+  .field-label .flag { font-size: 14px; }
+  .input-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card-2);
+    border: 2px solid transparent;
+    border-radius: 14px;
+    padding: 12px 14px;
+    transition: border-color .15s ease;
+  }
+  .input-row:focus-within { border-color: var(--accent); }
+  .cur-tag {
+    font-weight: 700; font-size: 15px; color: var(--muted);
+    white-space: nowrap; user-select: none;
+  }
+  .cur-tag .sym { color: var(--text); }
+  input.amount {
+    flex: 1; min-width: 0;
+    background: transparent; border: none; outline: none;
+    color: var(--text);
+    font-size: 30px; font-weight: 700;
+    text-align: left; direction: ltr;
+    font-variant-numeric: tabular-nums;
+  }
+  input.amount::placeholder { color: var(--muted); opacity: .5; }
+  .readout {
+    flex: 1; min-width: 0;
+    font-size: 30px; font-weight: 700;
+    text-align: left; direction: ltr;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .swap-wrap { display: flex; justify-content: center; margin: -6px 0; position: relative; z-index: 2; }
+  .swap-btn {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 4px solid var(--card);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #06263a; font-size: 20px; cursor: pointer;
+    display: grid; place-items: center;
+    transition: transform .25s ease, box-shadow .2s ease;
+    box-shadow: 0 6px 16px rgba(56,189,248,.4);
+  }
+  .swap-btn:hover { box-shadow: 0 8px 22px rgba(56,189,248,.55); }
+  .swap-btn:active { transform: scale(.9); }
+  .swap-btn.spin { transform: rotate(180deg); }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .preset {
+    flex: 1 1 auto; min-width: 60px;
+    background: var(--card-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .12s ease, transform .08s ease;
+  }
+  .preset:hover { background: var(--border); }
+  .preset:active { transform: scale(.95); }
+  .preset.clear { flex: 0 0 auto; color: var(--muted); }
+
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-size: 12px; color: var(--muted); padding: 2px 4px;
+  }
+  .btn-link {
+    background: none; border: none; color: var(--accent);
+    font-size: 12px; cursor: pointer; font-weight: 600; padding: 6px;
+  }
+  .btn-link:disabled { color: var(--muted); cursor: default; }
+
+  .banner {
+    font-size: 12.5px; line-height: 1.5;
+    border-radius: 12px; padding: 10px 12px;
+    display: none; align-items: center; gap: 8px;
+  }
+  .banner.show { display: flex; }
+  .banner.warn { background: rgba(251,191,36,.12); color: var(--warn); border: 1px solid rgba(251,191,36,.3); }
+  .banner.bad  { background: rgba(248,113,113,.12); color: var(--bad); border: 1px solid rgba(248,113,113,.3); }
+
+  .manual {
+    display: none; margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .manual.show { display: flex; }
+  .manual input {
+    width: 90px; background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 8px; color: var(--text);
+    font-size: 13px; direction: ltr; text-align: left;
+  }
+  .spin-anim { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">💱</div>
+        <div>
+          <h1>רופי ↔ שקל</h1>
+          <p>מחשבון המרת מטבע חי</p>
+        </div>
+      </div>
+      <div class="rate-pill" id="ratePill">
+        <span>שער נוכחי<span class="dot" id="statusDot"></span></span>
+        <strong id="rateText">טוען…</strong>
+        <span id="updatedText"></span>
+      </div>
+    </header>
+
+    <div id="banner" class="banner"></div>
+
+    <div class="card">
+      <!-- FROM -->
+      <div class="field">
+        <div class="field-label">
+          <span>מסכום</span>
+          <span id="fromName" class="flag">🇮🇳 רופי הודי</span>
+        </div>
+        <div class="input-row">
+          <span class="cur-tag" id="fromTag"><span class="sym">₹</span> INR</span>
+          <input class="amount" id="amount" type="text" inputmode="decimal"
+                 placeholder="0" autocomplete="off" value="100" />
+        </div>
+      </div>
+
+      <div class="swap-wrap">
+        <button class="swap-btn" id="swapBtn" title="החלף כיוון" aria-label="החלף כיוון">⇅</button>
+      </div>
+
+      <!-- TO -->
+      <div class="field">
+        <div class="field-label">
+          <span>לסכום</span>
+          <span id="toName" class="flag">🇮🇱 שקל חדש</span>
+        </div>
+        <div class="input-row">
+          <span class="cur-tag" id="toTag"><span class="sym">₪</span> ILS</span>
+          <div class="readout" id="result">—</div>
+        </div>
+      </div>
+
+      <div class="presets" id="presets">
+        <button class="preset" data-add="100">+100</button>
+        <button class="preset" data-add="500">+500</button>
+        <button class="preset" data-add="1000">+1,000</button>
+        <button class="preset" data-add="5000">+5,000</button>
+        <button class="preset clear" data-clear="1">נקה</button>
+      </div>
+
+      <div class="manual" id="manualBox">
+        <span>שער ידני (1 <span id="mFrom">INR</span> =</span>
+        <input id="manualRate" type="text" inputmode="decimal" placeholder="0.00" />
+        <span id="mTo">ILS</span>)
+        <button class="btn-link" id="applyManual">החל</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span id="sourceText">מקור: —</span>
+      <button class="btn-link" id="refreshBtn">↻ רענן שער</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CUR = {
+    INR: { name: "🇮🇳 רופי הודי", sym: "₹", code: "INR" },
+    ILS: { name: "🇮🇱 שקל חדש",  sym: "₪", code: "ILS" }
+  };
+  var LS_KEY = "rupee_shekel_state_v1";
+
+  // state
+  var state = {
+    from: "INR",
+    to: "ILS",
+    amount: "100",
+    // rateINRtoILS = how many ILS per 1 INR (canonical, stored regardless of direction)
+    rateINRtoILS: null,
+    updatedAt: null,      // ms timestamp of the rate
+    source: null,         // 'api' | 'cache' | 'manual'
+    manualRate: null      // canonical INR->ILS manual override
+  };
+
+  // ---- persistence ----
+  function save() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        for (var k in s) if (s.hasOwnProperty(k)) state[k] = s[k];
+      }
+    } catch (e) {}
+  }
+
+  // ---- dom ----
+  var el = {
+    amount: document.getElementById("amount"),
+    result: document.getElementById("result"),
+    fromTag: document.getElementById("fromTag"),
+    toTag: document.getElementById("toTag"),
+    fromName: document.getElementById("fromName"),
+    toName: document.getElementById("toName"),
+    swap: document.getElementById("swapBtn"),
+    rateText: document.getElementById("rateText"),
+    updatedText: document.getElementById("updatedText"),
+    statusDot: document.getElementById("statusDot"),
+    sourceText: document.getElementById("sourceText"),
+    refresh: document.getElementById("refreshBtn"),
+    banner: document.getElementById("banner"),
+    presets: document.getElementById("presets"),
+    manualBox: document.getElementById("manualBox"),
+    manualRate: document.getElementById("manualRate"),
+    applyManual: document.getElementById("applyManual"),
+    mFrom: document.getElementById("mFrom"),
+    mTo: document.getElementById("mTo")
+  };
+
+  // ---- helpers ----
+  function parseAmount(str) {
+    if (str == null) return NaN;
+    var cleaned = String(str).replace(/,/g, "").replace(/\s/g, "").trim();
+    if (cleaned === "") return NaN;
+    return Number(cleaned);
+  }
+  function fmtMoney(n) {
+    if (!isFinite(n)) return "—";
+    return n.toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtRate(n) {
+    if (!isFinite(n)) return "—";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  }
+  function timeAgo(ts) {
+    if (!ts) return "";
+    var diff = Date.now() - ts;
+    var mins = Math.round(diff / 60000);
+    if (mins < 1) return "עודכן זה עתה";
+    if (mins < 60) return "עודכן לפני " + mins + " דק׳";
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return "עודכן לפני " + hrs + " שע׳";
+    var days = Math.round(hrs / 24);
+    return "עודכן לפני " + days + " ימים";
+  }
+
+  // effective rate for CURRENT direction (from -> to)
+  function effectiveRate() {
+    var base = state.manualRate != null ? state.manualRate : state.rateINRtoILS;
+    if (base == null) return null;
+    // base is ILS per 1 INR
+    if (state.from === "INR" && state.to === "ILS") return base;
+    if (state.from === "ILS" && state.to === "INR") return 1 / base;
+    return base;
+  }
+
+  // ---- render ----
+  function renderCurrencies() {
+    var f = CUR[state.from], t = CUR[state.to];
+    el.fromTag.innerHTML = '<span class="sym">' + f.sym + '</span> ' + f.code;
+    el.toTag.innerHTML = '<span class="sym">' + t.sym + '</span> ' + t.code;
+    el.fromName.textContent = f.name;
+    el.toName.textContent = t.name;
+    el.mFrom.textContent = f.code;
+    el.mTo.textContent = t.code;
+  }
+
+  function renderRate() {
+    var r = effectiveRate();
+    var f = CUR[state.from], t = CUR[state.to];
+    if (r == null) {
+      el.rateText.textContent = "לא זמין";
+    } else {
+      el.rateText.textContent = "1 " + f.code + " = " + fmtRate(r) + " " + t.code;
+    }
+    el.updatedText.textContent = timeAgo(state.updatedAt);
+
+    var dot = el.statusDot;
+    dot.className = "dot";
+    if (state.source === "manual") { dot.classList.add("cache"); el.sourceText.textContent = "מקור: שער ידני"; }
+    else if (state.source === "api") { dot.classList.add("live"); el.sourceText.textContent = "מקור: API חי"; }
+    else if (state.source === "cache") { dot.classList.add("cache"); el.sourceText.textContent = "מקור: מטמון (לא מקוון)"; }
+    else { dot.classList.add("err"); el.sourceText.textContent = "מקור: —"; }
+  }
+
+  function renderResult() {
+    var amt = parseAmount(el.amount.value);
+    var r = effectiveRate();
+    if (!isFinite(amt) || r == null) {
+      el.result.textContent = "—";
+      return;
+    }
+    var out = amt * r;
+    el.result.textContent = CUR[state.to].sym + " " + fmtMoney(out);
+  }
+
+  function renderAll() { renderCurrencies(); renderRate(); renderResult(); }
+
+  function showBanner(type, msg) {
+    el.banner.className = "banner show " + type;
+    el.banner.textContent = msg;
+  }
+  function hideBanner() { el.banner.className = "banner"; }
+
+  // ---- fetching ----
+  var FETCH_FRESH_MS = 30 * 60 * 1000; // 30 min
+
+  function setFetching(on) {
+    el.refresh.disabled = on;
+    el.refresh.textContent = on ? "↻ מרענן…" : "↻ רענן שער";
+    if (on) el.refresh.classList.add("spin-anim"); else el.refresh.classList.remove("spin-anim");
+  }
+
+  // Returns a promise that resolves with ILS-per-INR or rejects.
+  function fetchFrankfurter() {
+    return fetch("https://api.frankfurter.dev/v1/latest?base=INR&symbols=ILS", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function (j) {
+        var v = j && j.rates && j.rates.ILS;
+        if (!v || !isFinite(v)) throw new Error("bad payload");
+        return v;
+      });
+  }
+  function fetchErApi() {
+    return fetch("https://open.er-api.com/v6/latest/INR", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function (j) {
+        var v = j && j.rates && j.rates.ILS;
+        if (!v || !isFinite(v)) throw new Error("bad payload");
+        return v;
+      });
+  }
+
+  function refreshRate(userInitiated) {
+    setFetching(true);
+    hideBanner();
+    fetchFrankfurter()
+      .catch(function () { return fetchErApi(); })
+      .then(function (rate) {
+        state.rateINRtoILS = rate;
+        state.updatedAt = Date.now();
+        state.source = "manual" === state.source && state.manualRate != null ? "manual" : "api";
+        // if a manual override was set previously, keep source as api once live data returns
+        if (state.manualRate != null) {
+          // live data arrived; drop manual override in favour of live, unless user re-applies
+          state.manualRate = null;
+        }
+        state.source = "api";
+        save();
+        renderAll();
+        hideBanner();
+      })
+      .catch(function () {
+        if (state.rateINRtoILS != null) {
+          state.source = state.manualRate != null ? "manual" : "cache";
+          showBanner("warn", "לא ניתן להשיג שער עדכני — מוצג שער אחרון שנשמר. ניתן להזין שער ידני למטה.");
+        } else {
+          state.source = null;
+          showBanner("bad", "אין חיבור לשרת השערים ואין שער שמור. הזן שער ידני למטה כדי להשתמש במחשבון.");
+        }
+        el.manualBox.classList.add("show");
+        renderAll();
+      })
+      .then(function () { setFetching(false); });
+  }
+
+  // ---- events ----
+  el.amount.addEventListener("input", function () {
+    state.amount = el.amount.value;
+    save();
+    renderResult();
+  });
+
+  el.swap.addEventListener("click", function () {
+    var f = state.from; state.from = state.to; state.to = f;
+    el.swap.classList.toggle("spin");
+    save();
+    renderAll();
+  });
+
+  el.presets.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    if (btn.dataset.clear) {
+      el.amount.value = "";
+    } else if (btn.dataset.add) {
+      var cur = parseAmount(el.amount.value);
+      if (!isFinite(cur)) cur = 0;
+      el.amount.value = String(cur + Number(btn.dataset.add));
+    }
+    state.amount = el.amount.value;
+    save();
+    renderResult();
+    el.amount.focus();
+  });
+
+  el.refresh.addEventListener("click", function () { refreshRate(true); });
+
+  el.applyManual.addEventListener("click", function () {
+    var v = parseAmount(el.manualRate.value);
+    if (!isFinite(v) || v <= 0) { el.manualRate.focus(); return; }
+    // manual rate is entered in CURRENT direction; convert to canonical INR->ILS
+    if (state.from === "INR" && state.to === "ILS") state.manualRate = v;
+    else state.manualRate = 1 / v;
+    state.updatedAt = Date.now();
+    state.source = "manual";
+    save();
+    renderAll();
+    hideBanner();
+  });
+  el.manualRate.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") el.applyManual.click();
+  });
+
+  // refresh when tab regains focus if data is stale
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+      if (!state.updatedAt || Date.now() - state.updatedAt > FETCH_FRESH_MS) refreshRate(false);
+    }
+  });
+
+  // ---- init ----
+  load();
+  el.amount.value = state.amount != null ? state.amount : "100";
+  renderAll();
+  // show cached immediately, then refresh in background
+  if (state.rateINRtoILS != null) {
+    if (state.source !== "manual") state.source = "cache";
+    renderAll();
+  }
+  refreshRate(false);
+})();
+</script>
+</body>
+</html>
