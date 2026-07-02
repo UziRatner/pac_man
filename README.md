@@ -11,9 +11,9 @@
 > ⚠️ **חשוב:** התקנה עובדת רק כשהדף מוגש דרך **HTTPS** (לא מקובץ מקומי). הדרך הפשוטה — GitHub Pages.
 
 **הפעלת אירוח דרך GitHub Pages:**
-1. מזגו את הענף ל-`main`.
-2. ב-GitHub: `Settings → Pages → Source: Deploy from a branch → main → /(root)`.
-3. הכתובת תהיה: `https://uziratner.github.io/pac_man/rupee-shekel-converter/`
+1. `Settings → Actions → General → Workflow permissions → "Read and write permissions"`.
+2. `Settings → Pages → Source → "GitHub Actions"`.
+3. הכתובת תהיה: `https://uziratner.github.io/pac_man/`
 
 **התקנה בטלפון:**
 - **אנדרואיד (Chrome):** פותחים את הכתובת → מופיע כפתור "התקן על מסך הבית", או תפריט ⋮ → "התקן אפליקציה".
@@ -31,5 +31,3 @@
 
 ## פרטיות
 כל החישוב מתבצע בדפדפן. הנתונים היחידים היוצאים החוצה הם בקשת שער החליפין ל-API.
-
-> הערה: זהו פרויקט נפרד ואינו קשור למשחק ה-Pac-Man שבשורש המאגר.
