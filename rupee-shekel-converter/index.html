@@ -6,6 +6,13 @@
 <meta name="theme-color" content="#0f172a" />
 <title>מחשבון רופי ↔ שקל</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💱</text></svg>" />
+<!-- PWA: installable to the phone home screen -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="רופי↔שקל" />
+<meta name="mobile-web-app-capable" content="yes" />
 <style>
   :root {
     --bg: #0f172a;
@@ -166,6 +173,17 @@
   }
   .btn-link:disabled { color: var(--muted); cursor: default; }
 
+  .install-btn {
+    display: none; width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #06263a; border: none; border-radius: 14px;
+    padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(56,189,248,.35);
+    transition: transform .08s ease, box-shadow .2s ease;
+  }
+  .install-btn.show { display: block; }
+  .install-btn:active { transform: scale(.98); }
+
   .banner {
     font-size: 12.5px; line-height: 1.5;
     border-radius: 12px; padding: 10px 12px;
@@ -255,6 +273,8 @@
         <button class="btn-link" id="applyManual">החל</button>
       </div>
     </div>
+
+    <button id="installBtn" class="install-btn">⬇️ התקן על מסך הבית</button>
 
     <div class="footer">
       <span id="sourceText">מקור: —</span>
@@ -455,8 +475,11 @@
         hideBanner();
       })
       .catch(function () {
-        if (state.rateINRtoILS != null) {
-          state.source = state.manualRate != null ? "manual" : "cache";
+        if (state.manualRate != null) {
+          state.source = "manual";
+          showBanner("warn", "לא ניתן להשיג שער עדכני — מוצג השער הידני שהזנת.");
+        } else if (state.rateINRtoILS != null) {
+          state.source = "cache";
           showBanner("warn", "לא ניתן להשיג שער עדכני — מוצג שער אחרון שנשמר. ניתן להזין שער ידני למטה.");
         } else {
           state.source = null;
@@ -533,6 +556,49 @@
     renderAll();
   }
   refreshRate(false);
+})();
+
+// ---- PWA: service worker + install to home screen ----
+(function () {
+  "use strict";
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+
+  var installBtn = document.getElementById("installBtn");
+  var deferred = null;
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferred = e;
+    installBtn.classList.add("show");
+  });
+
+  installBtn.addEventListener("click", function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function () {
+      deferred = null;
+      installBtn.classList.remove("show");
+    });
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferred = null;
+    installBtn.classList.remove("show");
+  });
+
+  // iOS Safari has no beforeinstallprompt — show a hint instead (once).
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isIOS && !standalone) {
+    installBtn.textContent = "⬆️ הוסף למסך הבית: שיתוף ← ״הוסף למסך הבית״";
+    installBtn.classList.add("show");
+    installBtn.style.fontSize = "13px";
+    installBtn.style.cursor = "default";
+  }
 })();
 </script>
 </body>
